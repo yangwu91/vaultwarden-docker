@@ -1,0 +1,71 @@
+#https://docs.github.com/en/actions/publishing-packages/publishing-docker-images
+name: Create and publish a Docker image to ghcr.io
+
+on:
+  schedule:
+    - cron: '44 4 * * 4'
+  push:
+    branches: "main"
+
+
+env:
+  # Use docker.io for Docker Hub if empty
+  REGISTRY: ghcr.io
+  # github.repository as <account>/<repo>
+  #IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: yangwu91/vaultwarden-integrated
+
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2.1.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get metadata for Docker
+        id: meta
+        run: |
+          VAULT=$(curl -s https://api.github.com/repos/dani-garcia/vaultwarden/releases/latest |grep "tag_name"|grep -o "[0-9]*\.[0-9]*\.[0-9]*")
+          NGINX=$(apt show nginx | grep "Version:" | grep -o "[0-9]*\.[0-9]*\.[0-9]*")
+          FRP=$(curl -s https://api.github.com/repos/fatedier/frp/releases/latest |grep "tag_name"|grep -o "[0-9]*\.[0-9]*\.[0-9]*")
+          GH=$(git rev-parse --short HEAD)
+          TAG=$(echo "Vaultwarden V${VAULT}, Nginx V${NGINX}, Frp V${FRP}, GitHub Repo ${GH}" | sha1sum)
+          TIME=$(date +%D-)
+          echo "TIME=$(date +%D-%T-%Z)" >> $GITHUB_OUTPUT
+          echo "VAULT=${VAULT}" >> $GITHUB_OUTPUT
+          echo "NGINX=${NGINX}" >> $GITHUB_OUTPUT
+          echo "FRP=${FRP}" >> $GITHUB_OUTPUT
+          echo "GH=${GH}" >> $GITHUB_OUTPUT
+          echo "TAG=${VAULT}-${TAG::7}" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4.0.0
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.TAG }},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          labels: |
+            integrated.vaultwarden.version=${{ steps.meta.outputs.VAULT }}
+            integrated.nginx.version=${{ steps.meta.outputs.NGINX }}
+            integrated.frp.version=${{ steps.meta.outputs.FRP }}
+            integrated.github.repo.version=${{ steps.meta.outputs.GH }}
+            org.opencontainers.image.url=https://github.com/yangwu91/vaultwarden-docker/pkgs/container/vaultwarden-integrated
+            org.opencontainers.image.version=${{ steps.meta.outputs.TAG }}
+            org.opencontainers.image.source=https://github.com/yangwu91/vaultwarden-docker
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.documentation=https://github.com/dani-garcia/vaultwarden/wiki
+            org.opencontainers.image.created=${{ steps.meta.outputs.TIME }}
+            org.opencontainers.image.description=Vaultwarden ${{ steps.meta.outputs.VAULT }}, Nginx ${{ steps.meta.outputs.NGINX }}, Frp ${{ steps.meta.outputs.FRP }}, GitHub Repo ${{ steps.meta.outputs.GH }}
