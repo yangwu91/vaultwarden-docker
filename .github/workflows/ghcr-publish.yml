@@ -3,7 +3,7 @@ name: Create and publish a Docker image to ghcr.io
 
 on:
   schedule:
-    - cron: '44 4 * * 4'
+    - cron: '44 4 8 * *'
   push:
     branches: "main"
 
@@ -42,7 +42,6 @@ jobs:
           FRP=$(curl -s https://api.github.com/repos/fatedier/frp/releases/latest |grep "tag_name"|grep -o "[0-9]*\.[0-9]*\.[0-9]*")
           GH=$(git rev-parse --short HEAD)
           TAG=$(echo "Vaultwarden V${VAULT}, Nginx V${NGINX}, Frp V${FRP}, GitHub Repo ${GH}" | sha1sum)
-          TIME=$(date +%D-)
           echo "TIME=$(date +%D-%T-%Z)" >> $GITHUB_OUTPUT
           echo "VAULT=${VAULT}" >> $GITHUB_OUTPUT
           echo "NGINX=${NGINX}" >> $GITHUB_OUTPUT
