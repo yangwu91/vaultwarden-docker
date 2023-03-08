@@ -40,13 +40,15 @@ jobs:
           VAULT=$(curl -s https://api.github.com/repos/dani-garcia/vaultwarden/releases/latest |grep "tag_name"|grep -o "[0-9]*\.[0-9]*\.[0-9]*")
           NGINX=$(apt show nginx | grep "Version:" | grep -o "[0-9]*\.[0-9]*\.[0-9]*")
           FRP=$(curl -s https://api.github.com/repos/fatedier/frp/releases/latest |grep "tag_name"|grep -o "[0-9]*\.[0-9]*\.[0-9]*")
+          DOCKER=$(md5sum -t Dockerfile | cut -d " " -f 1)
           GH=$(git rev-parse --short HEAD)
-          TAG=$(echo "Vaultwarden V${VAULT}, Nginx V${NGINX}, Frp V${FRP}, GitHub Repo ${GH}" | sha1sum)
+          TAG=$(echo "Vaultwarden V${VAULT}, Nginx V${NGINX}, Frp V${FRP}, GitHub Dockerfile ${DOCKER}" | sha1sum | cut -d " " -f 1)
           echo "TIME=$(date +%D-%T-%Z)" >> $GITHUB_OUTPUT
           echo "VAULT=${VAULT}" >> $GITHUB_OUTPUT
           echo "NGINX=${NGINX}" >> $GITHUB_OUTPUT
           echo "FRP=${FRP}" >> $GITHUB_OUTPUT
           echo "GH=${GH}" >> $GITHUB_OUTPUT
+          echo "DOCKER=${DOCKER}" >> $GITHUB_OUTPUT
           echo "TAG=${VAULT}-${TAG::7}" >> $GITHUB_OUTPUT
 
       - name: Build and push Docker image
@@ -67,4 +69,4 @@ jobs:
             org.opencontainers.image.licenses=MIT
             org.opencontainers.image.documentation=https://github.com/dani-garcia/vaultwarden/wiki
             org.opencontainers.image.created=${{ steps.meta.outputs.TIME }}
-            org.opencontainers.image.description=Vaultwarden ${{ steps.meta.outputs.VAULT }}, Nginx ${{ steps.meta.outputs.NGINX }}, Frp ${{ steps.meta.outputs.FRP }}, GitHub Repo ${{ steps.meta.outputs.GH }}
+            org.opencontainers.image.description=Vaultwarden ${{ steps.meta.outputs.VAULT }}, Nginx ${{ steps.meta.outputs.NGINX }}, Frp ${{ steps.meta.outputs.FRP }}, GitHub Dockerfile ${{ steps.meta.outputs.DOCKER }}
